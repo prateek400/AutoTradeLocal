@@ -1,0 +1,4 @@
+output/
+venv/
+build/
+logs/
