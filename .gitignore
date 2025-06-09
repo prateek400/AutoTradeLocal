@@ -2,3 +2,4 @@ output/
 venv/
 build/
 logs/
+__pycache__

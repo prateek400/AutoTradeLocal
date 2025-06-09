@@ -20,7 +20,8 @@ pip install -r requirements.txt
 
 # Run your main Python script
 echo "[INFO] Running app.py..."
-python app.py
+# python app.py
+python iv_fetch.py
 
 # Deactivate and optionally clean temp files
 echo "[INFO] Deactivating virtual environment..."

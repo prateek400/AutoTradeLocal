@@ -11,7 +11,7 @@ def get_instruments():
         if not instruments:
             raise ValueError("No instruments returned from API")
         _instruments_df = pd.DataFrame(instruments)
-        print("Sample instrument:", instruments[0])
+        # print("Sample instrument:", instruments[0])
 
         required_columns = {"name", "segment", "tradingsymbol"}
         if not required_columns.issubset(_instruments_df.columns):

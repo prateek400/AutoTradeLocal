@@ -1,4 +1,4 @@
-from kiteconnect import KiteConnect
+from kiteconnect import KiteConnect, KiteTicker
 from config import API_KEY, API_SECRET, ACCESS_TOKEN, REQUEST_TOKEN
 
 def get_kite_client():
@@ -14,3 +14,8 @@ def generate_access_token():
     print("Login URL:", kite.login_url())
     data = kite.generate_session(REQUEST_TOKEN, api_secret=API_SECRET)
     return data['access_token']
+
+
+def get_kite_ticker():
+    kws = KiteTicker(api_key=API_KEY, access_token=ACCESS_TOKEN)
+    return kws
