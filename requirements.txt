@@ -3,3 +3,5 @@ kiteconnect
 pandas
 requests
 python-telegram-bot
+scipy
+nsepython
