@@ -36,6 +36,7 @@ end = time.time()
 for inst in Instrument:
     logger.info(f"for instrument {inst.name} trend is {detect_final_trend(inst.value)}")
 
+# logger.info(fetch_ohlc(Instrument.NIFTY.value, datetime.datetime.now(), CandleInterval.DAY))
 # logger.info(f'current trend is: {detect_final_trend(Instrument.BANKNIFTY.value, datetime.datetime.now(), CandleInterval.DAY)}')
 
 # trends = detect_trend_at(Instrument.NIFTY.value, datetime.datetime.now(), CandleInterval.DAY)
