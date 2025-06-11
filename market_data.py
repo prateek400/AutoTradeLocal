@@ -17,6 +17,20 @@ def get_ltp_of_symbol(underlying_symbol):
     ltp_dict = get_ltp([underlying_symbol])
     return ltp_dict.get(underlying_symbol)
 
+def fetch_ohlc_between_given_time(instrument: BasicInstrumentDetails,
+                                  start_time: datetime, end_time: datetime,
+                                  interval: CandleInterval) -> pd.DataFrame:
+    data = kite.historical_data(
+        instrument.instrument_token,
+        from_date=start_time,
+        to_date=end_time,
+        interval=interval.value,
+        continuous=False
+    )
+
+    return pd.DataFrame(data)
+
+
 def fetch_ohlc(instrument: BasicInstrumentDetails, end_time: datetime, interval: CandleInterval, lookback_candles: int = 1000) -> pd.DataFrame:
     interval_map = {
         CandleInterval.MIN_1: timedelta(minutes=1),
@@ -32,13 +46,15 @@ def fetch_ohlc(instrument: BasicInstrumentDetails, end_time: datetime, interval:
     delta = interval_map[interval] * lookback_candles
     from_date = (end_time - delta)
 
-    data = kite.historical_data(
-        instrument.instrument_token,
-        from_date=from_date,
-        to_date=end_time,
-        interval=interval.value,
-        continuous=False
-    )
+    return fetch_ohlc_between_given_time(instrument, from_date, end_time, interval)
 
-    return pd.DataFrame(data)
+    # data = kite.historical_data(
+    #     instrument.instrument_token,
+    #     from_date=from_date,
+    #     to_date=end_time,
+    #     interval=interval.value,
+    #     continuous=False
+    # )
+
+    # return pd.DataFrame(data)
 

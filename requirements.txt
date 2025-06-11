@@ -7,3 +7,5 @@ scipy
 nsepython
 scikit-learn
 ta-lib
+matplotlib
+seaborn
