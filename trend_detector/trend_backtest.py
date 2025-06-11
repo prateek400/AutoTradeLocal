@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from dataclasses import dataclass
 from collections import defaultdict
+from const import Instrument
 import traceback
 import warnings
 warnings.filterwarnings('ignore')
@@ -24,6 +25,7 @@ class BacktestResult:
     actual_return: float
     forward_period_days: int
     interval: CandleInterval
+    instrument: BasicInstrumentDetails
     
 @dataclass
 class BacktestSummary:
@@ -33,15 +35,18 @@ class BacktestSummary:
     precision_bullish: float
     precision_bearish: float
     precision_sideway: float
+    precision_na: float
     recall_bullish: float
     recall_bearish: float
     recall_sideway: float
+    recall_na: float
     avg_confidence: float
     confidence_correlation: float
     profitable_predictions: int
     avg_return_bullish: float
     avg_return_bearish: float
     avg_return_sideway: float
+    avg_return_na: float
     sharpe_ratio: float
     max_drawdown: float
     win_rate: float
@@ -70,6 +75,62 @@ class TrendDetectorBacktester:
         self.confidence_threshold = confidence_threshold
         self.results: List[BacktestResult] = []
         
+    def get_trend_thresholds(self, instrument: BasicInstrumentDetails, days: int) -> dict:
+        """
+        Returns trend classification thresholds based on instrument and number of days.
+        
+        :param instrument: Name of the instrument (e.g., 'NIFTY', 'BANKNIFTY')
+        :param days: Number of trading days (e.g., 3, 5, 10, 20)
+        :return: Dictionary with bullish, bearish, and sideway thresholds
+        """
+        
+        # Base thresholds (for NIFTY-like volatility)
+        if days <= 3:
+            bullish = 0.015   # 1.5%
+            bearish = -0.015
+            sideway = 0.01    # ±1%
+        elif days <= 5:
+            bullish = 0.025
+            bearish = -0.025
+            sideway = 0.015
+        elif days <= 10:
+            bullish = 0.03
+            bearish = -0.03
+            sideway = 0.015
+        elif days <= 20:
+            bullish = 0.04
+            bearish = -0.04
+            sideway = 0.02
+        else:
+            # For >20 days, assume longer-term trend
+            bullish = 0.05
+            bearish = -0.05
+            sideway = 0.025
+
+        # Adjust for Bank Nifty (higher volatility)
+        if instrument.kite_trading_symbol == Instrument.BANKNIFTY.value.kite_trading_symbol:
+            bullish *= 1.2
+            bearish *= 1.2
+            sideway *= 1.3
+
+        return {
+            'bullish': round(bullish, 4),
+            'bearish': round(bearish, 4),
+            'sideway': round(sideway, 4)
+        }
+
+    def classify_actual_trend_v2(self, actual_return: float, instrument: BasicInstrumentDetails, days: int) -> Trend:
+        thresholds = self.get_trend_thresholds(instrument, days)
+        if(actual_return >= thresholds['bullish']):
+            return Trend.BULLISH
+        elif(actual_return <=thresholds['bearish']):
+            return Trend.BEARISH
+        elif(-1.0 * thresholds['sideway'] <= actual_return <= thresholds['sideway']):
+            return Trend.SIDE_WAY
+        else:
+            return Trend.NA
+
+
     def classify_actual_trend(self, actual_return: float) -> Trend:
         """Classify actual market movement based on return thresholds"""
         if actual_return >= self.return_thresholds['bullish']:
@@ -105,15 +166,15 @@ class TrendDetectorBacktester:
                 return {period: 0.0 for period in forward_periods}
             
             # Ensure we have a proper datetime index or column for date matching
-            if 'date' in df.columns:
-                # If date column exists, use it and ensure it's datetime
-                df['date'] = pd.to_datetime(df['date'])
-                date_series = df['date']
-            else:
-                # If no date column, assume index is the date
-                if not isinstance(df.index, pd.DatetimeIndex):
-                    df.index = pd.to_datetime(df.index)
-                date_series = pd.Series(df.index, index=df.index)
+            # if 'date' in df.columns:
+            #     # If date column exists, use it and ensure it's datetime
+            #     df['date'] = pd.to_datetime(df['date'])
+            #     date_series = df['date']
+            # else:
+            #     # If no date column, assume index is the date
+            #     if not isinstance(df.index, pd.DatetimeIndex):
+            #         df.index = pd.to_datetime(df.index)
+            #     date_series = pd.Series(df.index, index=df.index)
 
             # Get the first valid index position (first True value)
             start_position = 0  # First True value
@@ -180,9 +241,9 @@ class TrendDetectorBacktester:
                 )
                 
                 # Skip if confidence is below threshold
-                if confidence < self.confidence_threshold:
-                    current_date += timedelta(days=step_days)
-                    continue
+                # if confidence < self.confidence_threshold:
+                #     current_date += timedelta(days=step_days)
+                #     continue
                 
                 # Calculate forward returns for all periods
                 forward_returns = self.calculate_forward_returns(
@@ -199,7 +260,8 @@ class TrendDetectorBacktester:
                         confidence=confidence,
                         actual_return=actual_return,
                         forward_period_days=period,
-                        interval=interval
+                        interval=interval,
+                        instrument=instrument
                     )
                     
                     results_by_period[period].append(result)
@@ -224,23 +286,41 @@ class TrendDetectorBacktester:
     def calculate_metrics(self, results: List[BacktestResult]) -> BacktestSummary:
         """Calculate comprehensive performance metrics"""
         if not results:
-            return BacktestSummary(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+            return BacktestSummary(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
         
         df = pd.DataFrame([{
             'predicted': r.predicted_trend.value,
             'confidence': r.confidence,
             'return': r.actual_return,
-            'date': r.date
+            'date': r.date,
+            'instrument': r.instrument,
+            'forward_period_days' : r.forward_period_days
         } for r in results])
         
         # Classify actual trends
-        df['actual'] = df['return'].apply(self.classify_actual_trend).apply(lambda x: x.value)
+        df['actual'] = df.apply(
+                lambda row: self.classify_actual_trend_v2(
+                actual_return=row['return'],
+                instrument=row['instrument'],
+                days=row['forward_period_days']
+                ).value,
+                axis=1
+            )
         
         # Basic accuracy
         accuracy = (df['predicted'] == df['actual']).mean()
         
         # Precision and Recall for each class
-        trends = ['BULLISH', 'BEARISH', 'SIDE_WAY']
+        trends = ['BULLISH', 'BEARISH', 'SIDE_WAY', 'NA']
+        
+        """"
+        High precision, low recall → Model is conservative, predicts bullish only when it’s very confident → misses many actual bullish cases.
+        High recall, low precision → Model is aggressive, flags many things as bullish → catches most, but with many false positives.
+        Precision tells you how accurate the bullish calls are.
+        Recall tells you how many bullish cases you caught.
+        You need both to know if the model is reliable and complete.
+        """
+        
         precision = {}
         recall = {}
         
@@ -259,6 +339,8 @@ class TrendDetectorBacktester:
                 recall[trend] = 0.0
         
         # Confidence correlation with accuracy
+        # This measures how well your model’s confidence aligns with actual correctness.
+        # High correlation means confidence is meaningful. 
         df['correct'] = (df['predicted'] == df['actual']).astype(int)
         confidence_correlation = df['confidence'].corr(df['correct'])
         
@@ -288,15 +370,18 @@ class TrendDetectorBacktester:
             precision_bullish=precision.get('BULLISH', 0),
             precision_bearish=precision.get('BEARISH', 0),
             precision_sideway=precision.get('SIDE_WAY', 0),
+            precision_na=precision.get('NA', 0),
             recall_bullish=recall.get('BULLISH', 0),
             recall_bearish=recall.get('BEARISH', 0),
             recall_sideway=recall.get('SIDE_WAY', 0),
+            recall_na=recall.get('NA', 0),
             avg_confidence=df['confidence'].mean(),
             confidence_correlation=confidence_correlation if not pd.isna(confidence_correlation) else 0,
             profitable_predictions=profitable_predictions,
             avg_return_bullish=avg_returns.get('BULLISH', 0),
             avg_return_bearish=avg_returns.get('BEARISH', 0),
             avg_return_sideway=avg_returns.get('SIDE_WAY', 0),
+            avg_return_na=avg_returns.get('NA', 0),
             sharpe_ratio=sharpe_ratio,
             max_drawdown=max_drawdown,
             win_rate=win_rate
@@ -317,16 +402,19 @@ class TrendDetectorBacktester:
         print(f"  Bullish: {summary.precision_bullish:.3f}")
         print(f"  Bearish: {summary.precision_bearish:.3f}")
         print(f"  Sideways: {summary.precision_sideway:.3f}")
+        print(f"  NA: {summary.precision_na:.3f}")
         
         print(f"\nRECALL BY TREND:")
         print(f"  Bullish: {summary.recall_bullish:.3f}")
         print(f"  Bearish: {summary.recall_bearish:.3f}")
         print(f"  Sideways: {summary.recall_sideway:.3f}")
+        print(f"  NA: {summary.recall_na:.3f}")
         
         print(f"\nRETURN ANALYSIS:")
         print(f"  Avg Return (Bullish Predictions): {summary.avg_return_bullish:.4f}")
         print(f"  Avg Return (Bearish Predictions): {summary.avg_return_bearish:.4f}")
         print(f"  Avg Return (Sideways Predictions): {summary.avg_return_sideway:.4f}")
+        print(f"  Avg Return (NA Predictions): {summary.avg_return_na:.4f}")
         
         print(f"\nTRADING METRICS:")
         print(f"  Win Rate: {summary.win_rate:.3f}")
@@ -416,7 +504,7 @@ class TrendDetectorBacktester:
             'confidence': r.confidence,
             'return': r.actual_return,
             'predicted': r.predicted_trend.value,
-            'actual': self.classify_actual_trend(r.actual_return).value
+            'actual': self.classify_actual_trend_v2(r.actual_return, r.instrument, r.forward_period_days).value
         } for r in results])
         
         df['conf_bucket'] = pd.cut(df['confidence'], bins=buckets, labels=[f'Q{i+1}' for i in range(buckets)])
@@ -448,7 +536,8 @@ def run_comprehensive_backtest(instrument: BasicInstrumentDetails,
     Run comprehensive backtest across multiple intervals
     """
     if intervals is None:
-        intervals = [CandleInterval.DAY, CandleInterval.MIN_60, CandleInterval.MIN_30]
+        intervals = [CandleInterval.DAY]
+        # intervals = [CandleInterval.DAY, CandleInterval.MIN_60, CandleInterval.MIN_30]
     
     for interval in intervals:
         fetch_max_allowed_ohlc(instrument, interval)
@@ -461,7 +550,7 @@ def run_comprehensive_backtest(instrument: BasicInstrumentDetails,
         print(f"{'#'*80}")
         
         backtester = TrendDetectorBacktester(
-            confidence_threshold=0.1  # Only consider predictions with >10% confidence
+            confidence_threshold=0.3  # Only consider predictions with >10% confidence
         )
         
         # Run backtest
@@ -481,12 +570,13 @@ def run_comprehensive_backtest(instrument: BasicInstrumentDetails,
                 summary = backtester.calculate_metrics(period_results)
                 backtester.print_summary(summary, period)
                 interval_results[period] = summary
+                backtester.analyze_by_confidence_buckets(period_results)
         
         results[interval] = interval_results
         
         # Confidence bucket analysis for 5-day forward period
-        if 5 in results_by_period and results_by_period[5]:
-            backtester.analyze_by_confidence_buckets(results_by_period[5])
+        # if 5 in results_by_period and results_by_period[5]:
+        #     backtester.analyze_by_confidence_buckets(results_by_period[5])
         
         # Plot results
         if results_by_period:

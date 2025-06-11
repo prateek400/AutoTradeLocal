@@ -65,7 +65,7 @@ backtest_results = run_comprehensive_backtest(
         instrument=Instrument.NIFTY.value,
         start_date=start_date,
         end_date=end_date,
-        intervals=[CandleInterval.DAY, CandleInterval.MIN_60]
+        intervals=[CandleInterval.DAY]
     )
     
 # print("\n" + "="*80)
