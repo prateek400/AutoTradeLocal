@@ -1,14 +1,15 @@
 from enum import Enum
 from dataclasses import dataclass
 from typing import Optional
+from datetime import timedelta
 
 
 class CandleInterval(Enum):
     MIN_1 = "minute"
     MIN_3 = "3minute"
     MIN_5 = "5minute"
-    MIN_10 = "10minute"
-    MIN_15 = "15minute"
+    MIN_10 = "5minute"
+    MIN_15 = "5minute"
     MIN_30 = "30minute"
     MIN_60 = "60minute"
     DAY = "day"
@@ -43,6 +44,7 @@ class OptionInstrumentConfig(Enum):
 class BasicInstrumentDetails:
     kite_trading_symbol: str
     nse_lib_symbol: str
+    instrument_token: int
     option_detail : OptionInstrumentDetails
     exchange: Optional[str] = "NSE"
 
@@ -50,6 +52,7 @@ class Instrument(Enum):
     NIFTY = BasicInstrumentDetails(
         kite_trading_symbol="NIFTY 50",
         nse_lib_symbol="NIFTY",
+        instrument_token=256265,
         option_detail= OptionInstrumentDetails(
             strike_step=50,
             spread_width=100,
@@ -60,6 +63,7 @@ class Instrument(Enum):
     BANKNIFTY = BasicInstrumentDetails(
         kite_trading_symbol="NIFTY BANK",
         nse_lib_symbol="BANKNIFTY",
+        instrument_token=260105,
         option_detail= OptionInstrumentDetails(
             strike_step=100,
             spread_width=200,

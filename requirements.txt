@@ -6,3 +6,4 @@ python-telegram-bot
 scipy
 nsepython
 scikit-learn
+ta-lib

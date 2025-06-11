@@ -30,10 +30,11 @@ end = time.time()
 # instruments = kite.instruments("NFO")
 # print(instruments)
 
+logger.info(fetch_ohlc(Instrument.NIFTY.value, datetime.datetime.now(), CandleInterval.DAY))
 
-for inst in Instrument:
-    strikes = get_strikes_for_iron_condor(inst.value)
-    logger.info(strikes)
+# for inst in Instrument:
+#     strikes = get_strikes_for_iron_condor(inst.value)
+#     logger.info(strikes)
 
 # print(find_instrument_token("NIFTY",24700, datetime.date(2025, 6, 12), "PE"))
 
