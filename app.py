@@ -9,7 +9,8 @@ from nse_lib.nse_python_iv_cal import *
 from const import *
 from instrument_helper import *
 from trend_detector.trend_detector import *
-import datetime
+from datetime import datetime, timedelta
+
 import logging
 from pprint import pprint
 from trend_detector.trend_backtest import *
@@ -59,6 +60,7 @@ end = time.time()
 start_date = datetime(2024, 1, 1)
 end_date = datetime(2025, 6, 1)
 
+
 backtest_results = run_comprehensive_backtest(
         instrument=Instrument.NIFTY.value,
         start_date=start_date,
@@ -66,11 +68,11 @@ backtest_results = run_comprehensive_backtest(
         intervals=[CandleInterval.DAY, CandleInterval.MIN_60]
     )
     
-print("\n" + "="*80)
-print("BACKTEST COMPLETED")
-print("="*80)
-print("Results stored in backtest_results dictionary")
-print("Keys:", list(backtest_results.keys()))
+# print("\n" + "="*80)
+# print("BACKTEST COMPLETED")
+# print("="*80)
+# print("Results stored in backtest_results dictionary")
+# print("Keys:", list(backtest_results.keys()))
 
 
 # logger.info(fetch_ohlc(Instrument.NIFTY.value, datetime.datetime.now(), CandleInterval.DAY))

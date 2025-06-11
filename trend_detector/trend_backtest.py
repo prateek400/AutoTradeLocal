@@ -6,13 +6,13 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from dataclasses import dataclass
 from collections import defaultdict
-from const import *
+import traceback
 import warnings
 warnings.filterwarnings('ignore')
 
 # Import your existing modules (assuming they're available)
 from const import CandleInterval, BasicInstrumentDetails
-from market_data import fetch_ohlc, fetch_ohlc_between_given_time
+from market_data import fetch_ohlc, fetch_ohlc_between_given_time,fetch_max_allowed_ohlc
 from trend_detector.trend_detector import detect_final_trend, Trend
 
 @dataclass
@@ -104,24 +104,34 @@ class TrendDetectorBacktester:
             if df.empty:
                 return {period: 0.0 for period in forward_periods}
             
-            # Find the starting price (closest date to start_date)
-            df['date'] = pd.to_datetime(df.index)
-            start_idx = df[df['date'] >= start_date].index
+            # Ensure we have a proper datetime index or column for date matching
+            if 'date' in df.columns:
+                # If date column exists, use it and ensure it's datetime
+                df['date'] = pd.to_datetime(df['date'])
+                date_series = df['date']
+            else:
+                # If no date column, assume index is the date
+                if not isinstance(df.index, pd.DatetimeIndex):
+                    df.index = pd.to_datetime(df.index)
+                date_series = pd.Series(df.index, index=df.index)
+
+            # Get the first valid index position (first True value)
+            start_position = 0  # First True value
+            start_loc = df.index.get_loc(start_position)
+            start_price = df.loc[start_position, 'close']
             
-            if len(start_idx) == 0:
-                return {period: 0.0 for period in forward_periods}
-            
-            start_price = df.loc[start_idx[0], 'close']
-            
+            # Calculate returns for each forward period
             for period in forward_periods:
                 try:
-                    end_idx = start_idx[0] + period
-                    if end_idx < len(df):
-                        end_price = df.iloc[end_idx]['close']
+                    end_loc = start_loc + period
+                    if end_loc < len(df):
+                        end_position = df.index[end_loc]
+                        end_price = df.loc[end_position, 'close']
                         returns[period] = (end_price - start_price) / start_price
                     else:
                         returns[period] = 0.0
-                except:
+                except Exception as inner_e:
+                    print(f"Error calculating {period}-day return: {inner_e}")
                     returns[period] = 0.0
                     
         except Exception as e:
@@ -440,6 +450,9 @@ def run_comprehensive_backtest(instrument: BasicInstrumentDetails,
     if intervals is None:
         intervals = [CandleInterval.DAY, CandleInterval.MIN_60, CandleInterval.MIN_30]
     
+    for interval in intervals:
+        fetch_max_allowed_ohlc(instrument, interval)
+
     results = {}
     
     for interval in intervals:
@@ -484,16 +497,15 @@ def run_comprehensive_backtest(instrument: BasicInstrumentDetails,
 # Example usage
 if __name__ == "__main__":
     # Example instrument (you'll need to replace with actual instrument)
-    example_instrument = Instrument.NIFTY.value
-    # BasicInstrumentDetails(
-    #     symbol="RELIANCE",
-    #     exchange="NSE",
-    #     # Add other required fields based on your BasicInstrumentDetails class
-    # )
+    example_instrument = BasicInstrumentDetails(
+        symbol="RELIANCE",
+        exchange="NSE",
+        # Add other required fields based on your BasicInstrumentDetails class
+    )
     
     # Define backtest period
-    start_date = datetime(2024, 1, 1)
-    end_date = datetime(2025, 6, 1)
+    start_date = datetime(2023, 1, 1)
+    end_date = datetime(2024, 6, 1)
     
     # Run comprehensive backtest
     backtest_results = run_comprehensive_backtest(
