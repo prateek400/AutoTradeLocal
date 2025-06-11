@@ -2,7 +2,7 @@ import math
 import datetime
 from nse_lib.nse_python_iv_cal import *
 from market_data import get_ltp_of_symbol
-from const import OptionInstrumentDetails, OptionType
+from const import *
 import logging
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ def __is_iv_acceptable(iv: float, min_iv: float, max_iv: float) -> bool:
 
 
 # ---- Core Logic ---- #
-def get_best_iron_condor_expiry(instrument: OptionInstrumentDetails) -> Optional[date]:
+def get_best_iron_condor_expiry(instrument: BasicInstrumentDetails) -> Optional[date]:
     """
     Return the best expiry date for Iron Condor strategy.
     Prefers expiry with 7–10 DTE, otherwise closest future expiry.
@@ -43,7 +43,7 @@ def get_best_iron_condor_expiry(instrument: OptionInstrumentDetails) -> Optional
     return future_expiries[0]
 
 
-def get_strikes_for_iron_condor(instrument: OptionInstrumentDetails) -> Optional[dict]:
+def get_strikes_for_iron_condor(instrument: BasicInstrumentDetails) -> Optional[dict]:
     """
     Generates Iron Condor strike levels for given instrument.
     Returns None if IV filter blocks trade or data is missing.
@@ -55,8 +55,10 @@ def get_strikes_for_iron_condor(instrument: OptionInstrumentDetails) -> Optional
     if expiry_date is None:
         logger.error(f"[ERROR] Could not determine expiry date for {instrument.kite_trading_symbol}")
         return None
+    
+    option_detail = instrument.option_detail
 
-    spot_rounded = __round_to_nearest(spot_price, instrument.strike_step)
+    spot_rounded = __round_to_nearest(spot_price, option_detail.strike_step)
     days_to_expiry = (expiry_date - datetime.date.today()).days
 
     try:
@@ -70,17 +72,17 @@ def get_strikes_for_iron_condor(instrument: OptionInstrumentDetails) -> Optional
         logger.error(f"[ERROR] Failed to fetch IV: {e}")
         return None
 
-    if not __is_iv_acceptable(iv, instrument.iron_condor_min_iv, instrument.iron_condor_max_iv):
-        logger.warning(f"for instument {instrument_name} with expiry {expiry_date} [IV Filter] IV={iv:.2f}% not in range {instrument.iron_condor_min_iv}-{instrument.iron_condor_max_iv}")
+    if not __is_iv_acceptable(iv, option_detail.iron_condor_min_iv, option_detail.iron_condor_max_iv):
+        logger.warning(f"for instument {instrument_name} with expiry {expiry_date} [IV Filter] IV={iv:.2f}% not in range {option_detail.iron_condor_min_iv}-{option_detail.iron_condor_max_iv}")
         return None
 
     expected_move = __get_expected_move(iv, days_to_expiry, spot_price)
-    expected_move_rounded = __round_to_nearest(expected_move, instrument.strike_step)
+    expected_move_rounded = __round_to_nearest(expected_move, option_detail.strike_step)
 
     short_put = spot_rounded - expected_move_rounded
     short_call = spot_rounded + expected_move_rounded
-    long_put = short_put - instrument.spread_width
-    long_call = short_call + instrument.spread_width
+    long_put = short_put - option_detail.spread_width
+    long_call = short_call + option_detail.spread_width
 
     return {
         "underlying": instrument.kite_trading_symbol,

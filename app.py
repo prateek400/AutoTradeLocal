@@ -3,10 +3,11 @@
 from kite_client import get_kite_client, generate_access_token
 from config import API_KEY, API_SECRET
 from strategys.iron_condor.strike_selector import *
-from market_data import get_ltp_of_symbol
+from market_data import *
 from nsepython import *
 from nse_lib.nse_python_iv_cal import *
 from const import *
+from instrument_helper import *
 import datetime
 import logging
 
@@ -14,7 +15,6 @@ import logging
 logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 logger = logging.getLogger(__name__)
 
-instrument = "NIFTY"
 
 # print(f"for instument {instrument} value is {get_ltp_of_symbol(instrument)}")
 
@@ -28,11 +28,11 @@ end = time.time()
 # print(indices)
 
 # instruments = kite.instruments("NFO")
-instrument = OptionInstrumentConfig.NIFTY.config
 # print(instruments)
 
-for inst in OptionInstrumentConfig:
-    strikes = get_strikes_for_iron_condor(inst.config)
+
+for inst in Instrument:
+    strikes = get_strikes_for_iron_condor(inst.value)
     logger.info(strikes)
 
 # print(find_instrument_token("NIFTY",24700, datetime.date(2025, 6, 12), "PE"))
