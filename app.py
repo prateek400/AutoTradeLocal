@@ -11,6 +11,8 @@ from instrument_helper import *
 from trend_detector.trend_detector import *
 import datetime
 import logging
+from pprint import pprint
+import json
 
 
 logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
@@ -35,7 +37,7 @@ end = time.time()
 
 start  = datetime.datetime.now()
 for inst in Instrument:
-    logger.info(f"for instrument {inst.name} trend is {detect_final_trend(inst.value)}")
+    logger.info(f"for instrument {inst.name} trend is {json.dumps(get_trend_breakdown(inst.value), indent=4)}")
 
 logger.info(f'time req -> {datetime.datetime.now() - start}')
 
