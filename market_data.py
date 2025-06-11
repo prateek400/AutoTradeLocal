@@ -41,3 +41,4 @@ def fetch_ohlc(instrument: BasicInstrumentDetails, end_time: datetime, interval:
     )
 
     return pd.DataFrame(data)
+

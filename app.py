@@ -8,6 +8,7 @@ from nsepython import *
 from nse_lib.nse_python_iv_cal import *
 from const import *
 from instrument_helper import *
+from trend_detector.trend_detector import *
 import datetime
 import logging
 
@@ -30,7 +31,19 @@ end = time.time()
 # instruments = kite.instruments("NFO")
 # print(instruments)
 
-logger.info(fetch_ohlc(Instrument.NIFTY.value, datetime.datetime.now(), CandleInterval.DAY))
+# logger.info(fetch_ohlc(Instrument.NIFTY.value, datetime.datetime.now(), CandleInterval.DAY))
+
+for inst in Instrument:
+    logger.info(f"for instrument {inst.name} trend is {detect_final_trend(inst.value)}")
+
+# logger.info(f'current trend is: {detect_final_trend(Instrument.BANKNIFTY.value, datetime.datetime.now(), CandleInterval.DAY)}')
+
+# trends = detect_trend_at(Instrument.NIFTY.value, datetime.datetime.now(), CandleInterval.DAY)
+
+# for strategy_name, trend in trends.items():
+#     logger.info(f'  {strategy_name} ->  {trend}')
+
+# logger.info(detect_trend_at(Instrument.NIFTY.value, datetime.datetime.now(), CandleInterval.DAY))
 
 # for inst in Instrument:
 #     strikes = get_strikes_for_iron_condor(inst.value)
